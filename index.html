@@ -1,1 +1,179 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Block Blast</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --grid-bg: #1e293b;
+            --cell-border: #334155;
+            --neon-blue: #38bdf8;
+            --neon-purple: #a855f7;
+        }
 
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .score-container {
+            font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 45px);
+            grid-template-rows: repeat(8, 45px);
+            gap: 4px;
+            background-color: var(--grid-bg);
+            padding: 8px;
+            border-radius: 12px;
+            border: 2px solid var(--cell-border);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            width: 45px;
+            height: 45px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .cell.filled {
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        #pieces-container {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            height: 120px;
+            align-items: center;
+        }
+
+        .piece {
+            display: grid;
+            gap: 2px;
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+
+        .piece:active { cursor: grabbing; transform: scale(1.1); }
+
+        .block {
+            width: 25px;
+            height: 25px;
+            border-radius: 4px;
+        }
+
+        /* Blok Renkleri */
+        .color-1 { background: linear-gradient(45deg, #f87171, #ef4444); box-shadow: 0 0 10px #ef4444; }
+        .color-2 { background: linear-gradient(45deg, #34d399, #10b981); box-shadow: 0 0 10px #10b981; }
+        .color-3 { background: linear-gradient(45deg, #60a5fa, #3b82f6); box-shadow: 0 0 10px #3b82f6; }
+        .color-4 { background: linear-gradient(45deg, #fbbf24, #f59e0b); box-shadow: 0 0 10px #f59e0b; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="score-container">SKOR: <span id="score">0</span></div>
+    </div>
+
+    <div id="game-board"></div>
+
+    <div id="pieces-container">
+        </div>
+
+    <script>
+        const board = document.getElementById('game-board');
+        const piecesContainer = document.getElementById('pieces-container');
+        const scoreDisplay = document.getElementById('score');
+        
+        let score = 0;
+        const grid = Array(8).fill().map(() => Array(8).fill(0));
+
+        // Tahtayı Oluştur
+        function createBoard() {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // Rastgele Parça Şablonları
+        const templates = [
+            [[1, 1], [1, 1]], // Kare
+            [[1, 1, 1]],      // Yatay Çizgi
+            [[1], [1], [1]],  // Dikey Çizgi
+            [[1, 0], [1, 1]], // L Parçası
+            [[1]]             // Tekli Nokta
+        ];
+
+        function createPiece() {
+            const template = templates[Math.floor(Math.random() * templates.length)];
+            const colorId = Math.floor(Math.random() * 4) + 1;
+            const piece = document.createElement('div');
+            piece.classList.add('piece');
+            piece.draggable = true;
+            piece.style.gridTemplateColumns = `repeat(${template[0].length}, 25px)`;
+
+            template.forEach(row => {
+                row.forEach(cell => {
+                    const block = document.createElement('div');
+                    if (cell) {
+                        block.classList.add('block', `color-${colorId}`);
+                    } else {
+                        block.style.visibility = 'hidden';
+                    }
+                    piece.appendChild(block);
+                });
+            });
+
+            // Sürükleme Mantığı (Basitleştirilmiş)
+            piece.addEventListener('dragstart', (e) => {
+                piece.classList.add('dragging');
+                // Mobil uyum ve gelişmiş sürükleme için kütüphane gerekir ancak 
+                // bu standart HTML5 sürüklemesidir.
+            });
+
+            piecesContainer.appendChild(piece);
+        }
+
+        // Başlangıç
+        createBoard();
+        for(let i=0; i<3; i++) createPiece();
+
+        // Satır/Sütun Kontrolü ve Patlatma
+        function checkLines() {
+            // Bu kısım oyunun ana mantığıdır, bloklar yerleşince çalışır.
+            // Geliştirmek için: Blok yerleştirme eventleri eklenmeli.
+        }
+
+        // Bildirim
+        console.log("Oyun Hazır! Vercel üzerinden linkine tıklayıp kontrol edebilirsin.");
+    </script>
+</body>
+</html>
