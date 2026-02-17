@@ -2,178 +2,355 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Block Blast</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Block Blast Pro</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --grid-bg: #1e293b;
-            --cell-border: #334155;
-            --neon-blue: #38bdf8;
-            --neon-purple: #a855f7;
+            --bg: #05070a;
+            --panel: #111827;
+            --grid-bg: #1f2937;
+            --neon-blue: #00d2ff;
+            --neon-purple: #9d50bb;
+            --text: #f3f4f6;
         }
 
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
         body {
-            background-color: var(--bg-color);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
+            height: 100vh;
             overflow: hidden;
         }
 
-        .header {
+        /* GİRİŞ EKRANI */
+        #overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 7, 10, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: 0.5s;
+        }
+
+        .title-card {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 2rem;
+            animation: float 3s ease-in-out infinite;
         }
 
-        .score-container {
-            font-size: 2rem;
+        .title-card h1 {
+            font-size: 3.5rem;
+            margin: 0;
+            background: linear-gradient(to right, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(0,210,255,0.5));
+        }
+
+        .btn-start {
+            padding: 15px 50px;
+            font-size: 1.5rem;
             font-weight: bold;
-            text-shadow: 0 0 10px var(--neon-blue);
+            color: white;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(157, 80, 187, 0.6);
+            transition: 0.3s;
         }
 
-        #game-board {
+        .btn-start:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--neon-blue); }
+
+        /* OYUN ALANI */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            transition: 1s;
+        }
+
+        .stats {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            margin-bottom: 15px;
+            background: var(--panel);
+            border-radius: 15px;
+            border: 1px solid #374151;
+        }
+
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: var(--neon-blue); }
+
+        #board {
             display: grid;
-            grid-template-columns: repeat(8, 45px);
-            grid-template-rows: repeat(8, 45px);
-            gap: 4px;
-            background-color: var(--grid-bg);
-            padding: 8px;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            background: var(--panel);
+            padding: 10px;
             border-radius: 12px;
-            border: 2px solid var(--cell-border);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            border: 2px solid #374151;
         }
 
         .cell {
             width: 45px;
             height: 45px;
-            background-color: rgba(255, 255, 255, 0.05);
+            background: var(--grid-bg);
             border-radius: 4px;
-            transition: background-color 0.2s;
+            transition: background 0.2s, transform 0.2s;
         }
 
-        .cell.filled {
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        /* BLOK TASARIMLARI */
+        .filled { transform: scale(0.92); border-radius: 6px; position: relative; }
+        .filled::after {
+            content: ''; position: absolute; top: 5%; left: 5%; width: 90%; height: 40%;
+            background: rgba(255,255,255,0.1); border-radius: 4px;
         }
 
-        #pieces-container {
+        .c1 { background: linear-gradient(135deg, #ff416c, #ff4b2b); box-shadow: 0 0 10px #ff4b2b; }
+        .c2 { background: linear-gradient(135deg, #00b09b, #96c93d); box-shadow: 0 0 10px #00b09b; }
+        .c3 { background: linear-gradient(135deg, #36d1dc, #5b86e5); box-shadow: 0 0 10px #36d1dc; }
+        .c4 { background: linear-gradient(135deg, #f8ff00, #f8d800); box-shadow: 0 0 10px #f8d800; }
+        .c5 { background: linear-gradient(135deg, #8e2de2, #4a00e0); box-shadow: 0 0 10px #8e2de2; }
+
+        /* PARÇA SEÇİCİ */
+        #dock {
             margin-top: 30px;
             display: flex;
             gap: 20px;
-            height: 120px;
-            align-items: center;
+            height: 130px;
+            width: 100%;
+            justify-content: center;
+            perspective: 1000px;
         }
 
         .piece {
             display: grid;
             gap: 2px;
             cursor: grab;
-            transition: transform 0.2s;
+            transition: 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: scale(0.65);
         }
 
-        .piece:active { cursor: grabbing; transform: scale(1.1); }
+        .piece:hover { transform: scale(0.75); }
+        .dragging { opacity: 0.3; transform: scale(1.1) translateY(-20px) !important; }
 
-        .block {
-            width: 25px;
-            height: 25px;
-            border-radius: 4px;
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
 
-        /* Blok Renkleri */
-        .color-1 { background: linear-gradient(45deg, #f87171, #ef4444); box-shadow: 0 0 10px #ef4444; }
-        .color-2 { background: linear-gradient(45deg, #34d399, #10b981); box-shadow: 0 0 10px #10b981; }
-        .color-3 { background: linear-gradient(45deg, #60a5fa, #3b82f6); box-shadow: 0 0 10px #3b82f6; }
-        .color-4 { background: linear-gradient(45deg, #fbbf24, #f59e0b); box-shadow: 0 0 10px #f59e0b; }
+        /* MOBİL UYUM */
+        @media (max-width: 400px) {
+            .cell { width: 35px; height: 35px; }
+            #board { grid-template-columns: repeat(8, 35px); }
+        }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div class="score-container">SKOR: <span id="score">0</span></div>
+    <div id="overlay">
+        <div class="title-card">
+            <h1>BLOCK BLAST</h1>
+            <p>NEON EDITION</p>
+        </div>
+        <button class="btn-start" onclick="startGame()">OYNA</button>
     </div>
 
-    <div id="game-board"></div>
-
-    <div id="pieces-container">
+    <div class="game-container" id="gameUI">
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">SKOR</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">EN YÜKSEK</div>
+                <div class="stat-value" id="high-score">0</div>
+            </div>
         </div>
 
-    <script>
-        const board = document.getElementById('game-board');
-        const piecesContainer = document.getElementById('pieces-container');
-        const scoreDisplay = document.getElementById('score');
-        
-        let score = 0;
-        const grid = Array(8).fill().map(() => Array(8).fill(0));
+        <div id="board"></div>
 
-        // Tahtayı Oluştur
-        function createBoard() {
+        <div id="dock"></div>
+    </div>
+
+    <script>
+        const boardEl = document.getElementById('board');
+        const dockEl = document.getElementById('dock');
+        const scoreEl = document.getElementById('score');
+        const highScoreEl = document.getElementById('high-score');
+        const overlay = document.getElementById('overlay');
+        const gameUI = document.getElementById('gameUI');
+
+        let score = 0;
+        let highScore = localStorage.getItem('blockBlastBest') || 0;
+        let grid = Array(8).fill().map(() => Array(8).fill(0));
+        highScoreEl.innerText = highScore;
+
+        const SHAPES = [
+            { s: [[1,1,1,1]], c: 'c1' },
+            { s: [[1,1],[1,1]], c: 'c2' },
+            { s: [[1,1,1],[0,1,0]], c: 'c3' },
+            { s: [[1,1,0],[0,1,1]], c: 'c4' },
+            { s: [[1],[1],[1]], c: 'c5' },
+            { s: [[1,1,1]], c: 'c1' },
+            { s: [[1,1,1],[1,0,0],[1,0,0]], c: 'c2' },
+            { s: [[1]], c: 'c3' }
+        ];
+
+        function startGame() {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                gameUI.style.opacity = '1';
+                initGame();
+            }, 500);
+        }
+
+        function initGame() {
+            boardEl.innerHTML = '';
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const cell = document.createElement('div');
-                    cell.classList.add('cell');
-                    cell.dataset.row = r;
-                    cell.dataset.col = c;
-                    board.appendChild(cell);
+                    cell.className = 'cell';
+                    cell.id = `c-${r}-${c}`;
+                    boardEl.appendChild(cell);
                 }
+            }
+            spawnPieces();
+        }
+
+        function spawnPieces() {
+            dockEl.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const data = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+                createPiece(data);
             }
         }
 
-        // Rastgele Parça Şablonları
-        const templates = [
-            [[1, 1], [1, 1]], // Kare
-            [[1, 1, 1]],      // Yatay Çizgi
-            [[1], [1], [1]],  // Dikey Çizgi
-            [[1, 0], [1, 1]], // L Parçası
-            [[1]]             // Tekli Nokta
-        ];
-
-        function createPiece() {
-            const template = templates[Math.floor(Math.random() * templates.length)];
-            const colorId = Math.floor(Math.random() * 4) + 1;
+        function createPiece(data) {
             const piece = document.createElement('div');
-            piece.classList.add('piece');
+            piece.className = 'piece';
             piece.draggable = true;
-            piece.style.gridTemplateColumns = `repeat(${template[0].length}, 25px)`;
-
-            template.forEach(row => {
-                row.forEach(cell => {
+            piece.style.gridTemplateColumns = `repeat(${data.s[0].length}, 40px)`;
+            
+            data.s.forEach((row) => {
+                row.forEach((val) => {
                     const block = document.createElement('div');
-                    if (cell) {
-                        block.classList.add('block', `color-${colorId}`);
-                    } else {
-                        block.style.visibility = 'hidden';
-                    }
+                    block.style.width = '40px';
+                    block.style.height = '40px';
+                    if (val) block.className = `filled ${data.c}`;
+                    else block.style.opacity = '0';
                     piece.appendChild(block);
                 });
             });
 
-            // Sürükleme Mantığı (Basitleştirilmiş)
             piece.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text', JSON.stringify(data));
                 piece.classList.add('dragging');
-                // Mobil uyum ve gelişmiş sürükleme için kütüphane gerekir ancak 
-                // bu standart HTML5 sürüklemesidir.
             });
 
-            piecesContainer.appendChild(piece);
+            piece.addEventListener('dragend', () => piece.classList.remove('dragging'));
+            dockEl.appendChild(piece);
         }
 
-        // Başlangıç
-        createBoard();
-        for(let i=0; i<3; i++) createPiece();
+        boardEl.addEventListener('dragover', (e) => e.preventDefault());
 
-        // Satır/Sütun Kontrolü ve Patlatma
-        function checkLines() {
-            // Bu kısım oyunun ana mantığıdır, bloklar yerleşince çalışır.
-            // Geliştirmek için: Blok yerleştirme eventleri eklenmeli.
+        boardEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const data = JSON.parse(e.dataTransfer.getData('text'));
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / 8;
+            
+            const col = Math.floor((e.clientX - rect.left) / cellSize);
+            const row = Math.floor((e.clientY - rect.top) / cellSize);
+
+            if (canPlace(data.s, row, col)) {
+                placePiece(data.s, row, col, data.c);
+                document.querySelector('.dragging').remove();
+                if (dockEl.children.length === 0) spawnPieces();
+                checkMatch();
+            }
+        });
+
+        function canPlace(shape, r, c) {
+            for (let i = 0; i < shape.length; i++) {
+                for (let j = 0; j < shape[i].length; j++) {
+                    if (shape[i][j]) {
+                        if (r+i < 0 || r+i >= 8 || c+j < 0 || c+j >= 8 || grid[r+i][c+j] !== 0) return false;
+                    }
+                }
+            }
+            return true;
         }
 
-        // Bildirim
-        console.log("Oyun Hazır! Vercel üzerinden linkine tıklayıp kontrol edebilirsin.");
+        function placePiece(shape, r, c, color) {
+            for (let i = 0; i < shape.length; i++) {
+                for (let j = 0; j < shape[i].length; j++) {
+                    if (shape[i][j]) {
+                        grid[r+i][c+j] = color;
+                        const cell = document.getElementById(`c-${r+i}-${c+j}`);
+                        cell.classList.add('filled', color);
+                    }
+                }
+            }
+        }
+
+        function checkMatch() {
+            let rows = [];
+            let cols = [];
+
+            for(let i=0; i<8; i++) {
+                if(grid[i].every(x => x !== 0)) rows.push(i);
+                let colFull = true;
+                for(let j=0; j<8; j++) if(grid[j][i] === 0) colFull = false;
+                if(colFull) cols.push(i);
+            }
+
+            rows.forEach(r => {
+                for(let c=0; c<8; c++) clearCell(r, c);
+                score += 100;
+            });
+
+            cols.forEach(c => {
+                for(let r=0; r<8; r++) clearCell(r, c);
+                score += 100;
+            });
+
+            if(rows.length > 0 || cols.length > 0) {
+                scoreEl.innerText = score;
+                if(score > highScore) {
+                    highScore = score;
+                    highScoreEl.innerText = highScore;
+                    localStorage.setItem('blockBlastBest', highScore);
+                }
+            }
+        }
+
+        function clearCell(r, c) {
+            grid[r][c] = 0;
+            const el = document.getElementById(`c-${r}-${c}`);
+            el.style.transform = 'scale(0)';
+            setTimeout(() => {
+                el.className = 'cell';
+                el.style.transform = 'scale(1)';
+            }, 200);
+        }
     </script>
 </body>
 </html>
