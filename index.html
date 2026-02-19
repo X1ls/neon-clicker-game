@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Block Blast</title>
+    <title>Ultimate Block Blast</title>
     <style>
         :root {
             --bg-color: #0f172a;
             --grid-bg: #1e293b;
             --cell-empty: #334155;
-            --ghost-color: rgba(255, 255, 255, 0.15);
+            --ghost-color: rgba(255, 255, 255, 0.2);
         }
 
         body {
@@ -26,113 +26,114 @@
             touch-action: none;
         }
 
-        /* Üst Menü */
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+        .header { text-align: center; margin-bottom: 15px; }
+        #score-label { font-size: 14px; color: #94a3b8; letter-spacing: 2px; }
+        #score { font-size: 64px; font-weight: 900; margin: 0; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        #score-label { font-size: 18px; color: #94a3b8; margin: 0; }
-        #score { font-size: 56px; font-weight: 800; margin: 0; line-height: 1; }
-
-        /* Oyun Alanı */
-        #game-container { position: relative; }
+        #game-container { position: relative; padding: 10px; }
 
         #grid {
             display: grid;
             grid-template-columns: repeat(8, 45px);
             grid-template-rows: repeat(8, 45px);
-            gap: 5px;
+            gap: 6px;
             background-color: var(--grid-bg);
-            padding: 10px;
-            border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            padding: 12px;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
         .cell {
             width: 45px;
             height: 45px;
             background-color: var(--cell-empty);
-            border-radius: 6px;
-            transition: transform 0.2s, background-color 0.2s;
+            border-radius: 8px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .cell.filled { transform: scale(0.95); }
-        .cell.ghost { background-color: var(--ghost-color) !important; }
-        
+        /* Blok Renkleri ve Parlama */
+        .c1 { background: #ff3b30; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+        .c2 { background: #ff9500; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+        .c3 { background: #ffcc00; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+        .c4 { background: #4cd964; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+        .c5 { background: #5ac8fa; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+        .c6 { background: #007aff; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+        .c7 { background: #af52de; box-shadow: inset 0 -4px rgba(0,0,0,0.2); }
+
+        .cell.filled { transform: scale(0.92); animation: popIn 0.2s ease-out; }
+        .cell.ghost { background-color: var(--ghost-color) !important; transform: scale(0.95); }
+
+        @keyframes popIn { 0% { transform: scale(0.5); } 100% { transform: scale(0.92); } }
+
         /* Patlama Animasyonu */
-        @keyframes blast {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.5; }
-            100% { transform: scale(0); opacity: 0; }
+        @keyframes explode {
+            0% { transform: scale(1); filter: brightness(2); opacity: 1; }
+            100% { transform: scale(0); filter: brightness(3); opacity: 0; }
         }
-        .blasting { animation: blast 0.4s ease-out forwards; }
+        .blasting { animation: explode 0.5s ease-out forwards; }
 
-        /* Blok Seçenekleri */
         #pieces-container {
-            margin-top: 30px;
+            margin-top: 40px;
             display: flex;
-            gap: 25px;
-            height: 130px;
-            justify-content: center;
+            gap: 30px;
+            height: 120px;
             align-items: center;
-            min-width: 350px;
         }
 
-        .piece-canvas {
-            cursor: grab;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
-            transition: transform 0.2s;
-        }
+        .piece-canvas { cursor: grab; transition: opacity 0.2s; }
+        .piece-canvas.dragging-original { opacity: 0.3; }
 
-        /* Game Over Ekranı */
         #overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
+            border-radius: 16px;
             z-index: 2000;
             display: none;
+            backdrop-filter: blur(4px);
         }
 
         .btn {
-            background: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
             border: none;
             color: white;
-            padding: 15px 40px;
-            font-size: 20px;
+            padding: 18px 50px;
+            font-size: 24px;
             font-weight: bold;
-            border-radius: 30px;
+            border-radius: 40px;
             cursor: pointer;
-            transition: background 0.2s;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.4);
         }
 
-        .btn:hover { background: #2563eb; }
-
-        /* Renkler */
-        .c1 { background: #ef4444; } .c2 { background: #f59e0b; }
-        .c3 { background: #eab308; } .c4 { background: #10b981; }
-        .c5 { background: #06b6d4; } .c6 { background: #3b82f6; }
-        .c7 { background: #8b5cf6; }
+        /* Puan Popup */
+        .score-popup {
+            position: absolute;
+            color: #ffcc00;
+            font-weight: bold;
+            font-size: 24px;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            z-index: 3000;
+        }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <p id="score-label">SKOR</p>
+    <p id="score-label">SCORE</p>
     <div id="score">0</div>
 </div>
 
 <div id="game-container">
     <div id="grid"></div>
     <div id="overlay">
-        <h1 id="over-text">OYUN BİTTİ</h1>
-        <button class="btn" onclick="startGame()">OYNA</button>
+        <h1 id="over-text">BLOCK BLAST</h1>
+        <button class="btn" onclick="startGame()">PLAY</button>
     </div>
 </div>
 
@@ -148,13 +149,27 @@
     let grid = [];
     let score = 0;
     let dragElement = null;
-    let activeData = null;
+
+    // Ses Sentezleyici
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(freq, type, duration) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
 
     const SHAPES = [
         { s: [[1,1],[1,1]], c: 1 }, { s: [[1,1,1]], c: 2 },
         { s: [[1],[1],[1]], c: 3 }, { s: [[1,0],[1,0],[1,1]], c: 4 },
         { s: [[1,1,1,1]], c: 5 }, { s: [[0,1],[1,1],[0,1]], c: 6 },
-        { s: [[1,1,1],[0,1,0]], c: 7 }
+        { s: [[1,1,1],[1,0,0]], c: 7 }, { s: [[1]], c: 2 }
     ];
 
     function initGrid() {
@@ -170,29 +185,39 @@
         }
     }
 
+    function createPieceCanvas(data) {
+        const canvas = document.createElement('canvas');
+        const size = 28;
+        canvas.width = data.s[0].length * size;
+        canvas.height = data.s.length * size;
+        canvas.dataset.shape = JSON.stringify(data);
+        const ctx = canvas.getContext('2d');
+        const colors = ["", "#ff3b30", "#ff9500", "#ffcc00", "#4cd964", "#5ac8fa", "#007aff", "#af52de"];
+        
+        data.s.forEach((row, r) => {
+            row.forEach((v, c) => {
+                if (v) {
+                    ctx.fillStyle = colors[data.c];
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = "rgba(0,0,0,0.3)";
+                    ctx.beginPath();
+                    ctx.roundRect(c * size, r * size, size-3, size-3, 6);
+                    ctx.fill();
+                    // Parlama efekti
+                    ctx.fillStyle = "rgba(255,255,255,0.2)";
+                    ctx.fillRect(c*size+4, r*size+4, size-12, 4);
+                }
+            });
+        });
+        return canvas;
+    }
+
     function spawnPieces() {
         piecesContainer.innerHTML = '';
         for (let i = 0; i < 3; i++) {
             const data = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-            const canvas = document.createElement('canvas');
-            const size = 25;
-            canvas.width = data.s[0].length * size;
-            canvas.height = data.s.length * size;
+            const canvas = createPieceCanvas(data);
             canvas.className = 'piece-canvas';
-            
-            const ctx = canvas.getContext('2d');
-            const colors = ["", "#ef4444", "#f59e0b", "#eab308", "#10b981", "#06b6d4", "#3b82f6", "#8b5cf6"];
-            
-            data.s.forEach((row, r) => {
-                row.forEach((v, c) => {
-                    if (v) {
-                        ctx.fillStyle = colors[data.c];
-                        ctx.roundRect(c * size, r * size, size-2, size-2, 4);
-                        ctx.fill();
-                    }
-                });
-            });
-
             canvas.onmousedown = (e) => startDrag(e, data, canvas);
             canvas.ontouchstart = (e) => startDrag(e, data, canvas);
             piecesContainer.appendChild(canvas);
@@ -200,37 +225,42 @@
     }
 
     function startDrag(e, data, original) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
         e.preventDefault();
-        activeData = data;
         const touch = e.touches ? e.touches[0] : e;
         
+        original.classList.add('dragging-original');
         dragElement = original.cloneNode(true);
         dragElement.style.position = 'fixed';
-        dragElement.style.width = (original.width * 1.8) + 'px';
-        dragElement.style.height = (original.height * 1.8) + 'px';
+        dragElement.style.width = (original.width * 1.5) + 'px';
+        dragElement.style.height = (original.height * 1.5) + 'px';
         dragElement.style.zIndex = '1000';
         dragElement.style.pointerEvents = 'none';
+        dragElement.style.transform = 'scale(1.1)';
         document.body.appendChild(dragElement);
 
         const move = (me) => {
             const mt = me.touches ? me.touches[0] : me;
             dragElement.style.left = (mt.clientX - dragElement.offsetWidth/2) + 'px';
-            dragElement.style.top = (mt.clientY - dragElement.offsetHeight - 30) + 'px';
+            dragElement.style.top = (mt.clientY - dragElement.offsetHeight - 40) + 'px';
             
             clearGhosts();
-            const pos = getPos(mt.clientX, mt.clientY - 80);
+            const pos = getPos(mt.clientX, mt.clientY - 100);
             if (pos && canPlace(pos.r, pos.c, data.s)) drawGhost(pos.r, pos.c, data.s);
         };
 
         const up = (ue) => {
             const ut = ue.changedTouches ? ue.changedTouches[0] : ue;
-            const pos = getPos(ut.clientX, ut.clientY - 80);
+            const pos = getPos(ut.clientX, ut.clientY - 100);
             
             if (pos && canPlace(pos.r, pos.c, data.s)) {
                 place(pos.r, pos.c, data);
                 original.remove();
+                playSound(440, 'sine', 0.1);
                 if (piecesContainer.children.length === 0) spawnPieces();
-                checkLines();
+                checkLines(ut.clientX, ut.clientY);
+            } else {
+                original.classList.remove('dragging-original');
             }
 
             dragElement.remove();
@@ -250,8 +280,9 @@
 
     function getPos(x, y) {
         const rct = gridElement.getBoundingClientRect();
-        const c = Math.floor((x - rct.left) / 50);
-        const r = Math.floor((y - rct.top) / 50);
+        const cellTotal = 51; // 45px + 6px gap
+        const c = Math.floor((x - rct.left - 12) / cellTotal);
+        const r = Math.floor((y - rct.top - 12) / cellTotal);
         return (r >= 0 && r < 8 && c >= 0 && c < 8) ? {r, c} : null;
     }
 
@@ -265,7 +296,10 @@
 
     function drawGhost(r, c, s) {
         s.forEach((row, dr) => row.forEach((v, dc) => {
-            if (v) document.getElementById(`c-${r+dr}-${c+dc}`).classList.add('ghost');
+            if (v) {
+                const el = document.getElementById(`c-${r+dr}-${c+dc}`);
+                if(el) el.classList.add('ghost');
+            }
         }));
     }
 
@@ -282,40 +316,58 @@
             }
         }));
         score += 10;
-        scoreElement.innerText = score;
+        updateScore();
     }
 
-    function checkLines() {
+    function checkLines(clickX, clickY) {
         let rToClear = [], cToClear = [];
         for (let i = 0; i < 8; i++) {
             if (grid[i].every(x => x !== 0)) rToClear.push(i);
-            if (grid.every(row => row[i] !== 0)) cToClear.push(i);
+            let colFull = true;
+            for(let j=0; j<8; j++) if(grid[j][i] === 0) colFull = false;
+            if (colFull) cToClear.push(i);
         }
 
-        rToClear.forEach(r => {
-            for(let i=0; i<8; i++) animateBlast(r, i);
-            grid[r].fill(0);
-        });
-        cToClear.forEach(c => {
-            for(let i=0; i<8; i++) {
-                animateBlast(i, c);
-                grid[i][c] = 0;
-            }
-        });
-
         if (rToClear.length || cToClear.length) {
-            score += (rToClear.length + cToClear.length) * 100;
+            playSound(880, 'square', 0.2);
+            setTimeout(() => playSound(1100, 'square', 0.2), 100);
+            
+            rToClear.forEach(r => {
+                for(let i=0; i<8; i++) animateBlast(r, i);
+                grid[r].fill(0);
+            });
+            cToClear.forEach(c => {
+                for(let i=0; i<8; i++) {
+                    animateBlast(i, c);
+                    grid[i][c] = 0;
+                }
+            });
+
+            const bonus = (rToClear.length + cToClear.length) * 100;
+            score += bonus;
+            showScorePopup(bonus);
+            
             setTimeout(() => {
                 render();
-                scoreElement.innerText = score;
-            }, 400);
+                updateScore();
+            }, 500);
         }
     }
 
     function animateBlast(r, c) {
         const el = document.getElementById(`c-${r}-${c}`);
         el.classList.add('blasting');
-        setTimeout(() => el.classList.remove('blasting'), 400);
+        setTimeout(() => el.classList.remove('blasting'), 500);
+    }
+
+    function showScorePopup(val) {
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.innerText = `+${val}`;
+        popup.style.left = '50%';
+        popup.style.top = '40%';
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 800);
     }
 
     function render() {
@@ -327,68 +379,43 @@
         }
     }
 
-    function checkGameOver() {
-        const items = Array.from(piecesContainer.children);
-        const lost = items.every(item => {
-            const s = JSON.parse(item.dataset.shape || "[]"); // Fallback check
-            // Mevcut parçalar üzerinden kontrol
-            let canFit = false;
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    if (canPlace(r, c, activeData.s)) canFit = true;
-                }
-            }
-            return !canFit;
-        });
-
-        // Basitleştirilmiş mantık: Eğer hiçbir parça hiçbir yere sığmıyorsa
-        let anyMove = false;
-        for (let item of piecesContainer.children) {
-            // Şekli canvas üzerinden değil, spawn sırasında saklanan bir referanstan almalıyız
-            // Bu örnekte basitleştirmek için mevcut activeData üzerinden kontrol ediyoruz
-            // Ancak tam çözüm için her canvas'a shapes bilgisini Dataset olarak ekledik:
-        }
+    function updateScore() {
+        scoreElement.innerText = score;
     }
 
-    // Gerçekçi Game Over Kontrolü
     function checkGameOver() {
         const canvases = piecesContainer.querySelectorAll('canvas');
         if (canvases.length === 0) return;
 
-        let possible = false;
+        let anyMovePossible = false;
         canvases.forEach(canv => {
-            const shapeStr = canv.dataset.shape; 
-            // CreatePiece fonksiyonunda dataset eklemeyi unutmamalıyız
+            const data = JSON.parse(canv.dataset.shape);
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<8; c++) {
+                    if (canPlace(r, c, data.s)) anyMovePossible = true;
+                }
+            }
         });
-        
-        // Basit test: Izgara çok dolduğunda tetiklenir
-        let filledCount = grid.flat().filter(x => x !== 0).length;
-        if (filledCount > 60) { // Güvenli sınır
-             // Oyun bitti mantığı
+
+        if (!anyMovePossible) {
+            playSound(220, 'sawtooth', 0.5);
+            overlay.style.display = 'flex';
+            document.getElementById('over-text').innerText = "GAME OVER";
         }
-        
-        // Alternatif: canPlace fonksiyonunu tüm parçalar için döngüye sokar
     }
 
     function startGame() {
         overlay.style.display = 'none';
         score = 0;
-        scoreElement.innerText = "0";
+        updateScore();
         initGrid();
         spawnPieces();
     }
 
-    // Sayfa yüklendiğinde başla
     window.onload = () => {
         initGrid();
         overlay.style.display = 'flex';
-        document.getElementById('over-text').innerText = "BLOCK BLAST";
     };
-
-    // Parça oluşturma fonksiyonuna dataset ekleme güncellemesi
-    const originalCreate = createPiece; 
-    // (Yukarıdaki kodun içine direkt entegre edildi)
-
 </script>
 </body>
 </html>
