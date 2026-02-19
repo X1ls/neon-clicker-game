@@ -2,159 +2,360 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Krunker Clone JS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Block Blast</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #crosshair {
-            position: absolute; top: 50%; left: 50%;
-            width: 10px; height: 10px; border: 2px solid white;
-            border-radius: 50%; transform: translate(-50%, -50%);
-            pointer-events: none; z-index: 10;
+        :root {
+            --bg-color: #121213;
+            --grid-bg: #1e1e20;
+            --cell-border: #2c2c2e;
+            --ghost-color: rgba(255, 255, 255, 0.2);
         }
-        #ui {
-            position: absolute; bottom: 20px; left: 20px;
-            color: white; font-size: 24px; text-shadow: 2px 2px black;
-            pointer-events: none;
+
+        body {
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
         }
-        #instructions {
-            position: absolute; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); color: white;
-            display: flex; justify-content: center; align-items: center;
-            cursor: pointer; text-align: center;
+
+        .header {
+            margin-top: 20px;
+            text-align: center;
         }
+
+        #score {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(8, 45px);
+            grid-template-rows: repeat(8, 45px);
+            gap: 4px;
+            background-color: var(--grid-bg);
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            width: 45px;
+            height: 45px;
+            background-color: #2a2a2c;
+            border-radius: 4px;
+            transition: background-color 0.1s;
+        }
+
+        .cell.filled { border-radius: 6px; }
+        .cell.ghost { background-color: var(--ghost-color) !important; }
+
+        #pieces-container {
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            height: 120px;
+            align-items: center;
+        }
+
+        .piece-canvas {
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+
+        .piece-canvas:active { cursor: grabbing; }
+
+        /* Renk Paleti */
+        .color-1 { background-color: #ff3b30; } /* Kırmızı */
+        .color-2 { background-color: #ff9500; } /* Turuncu */
+        .color-3 { background-color: #ffcc00; } /* Sarı */
+        .color-4 { background-color: #4cd964; } /* Yeşil */
+        .color-5 { background-color: #5ac8fa; } /* Açık Mavi */
+        .color-6 { background-color: #007aff; } /* Mavi */
+        .color-7 { background-color: #5856d6; } /* Mor */
     </style>
 </head>
 <body>
 
-    <div id="instructions">
-        <h1>OYUNA BAŞLAMAK İÇİN TIKLA</h1>
-        <p>(W,A,S,D ile hareket, Mouse ile bakış ve ateş)</p>
-    </div>
-    <div id="crosshair"></div>
-    <div id="ui">HP: 100 | SKOR: 0</div>
+<div class="header">
+    <div id="score">0</div>
+</div>
 
-    <script type="importmap">
-        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
-    </script>
+<div id="grid"></div>
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+<div id="pieces-container"></div>
 
-        // --- SAHNE VE AYARLAR ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb); // Gökyüzü mavisi
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+<script>
+    const GRID_SIZE = 8;
+    const CELL_SIZE = 45;
+    const GAP = 4;
+    const gridElement = document.getElementById('grid');
+    const scoreElement = document.getElementById('score');
+    const piecesContainer = document.getElementById('pieces-container');
 
-        // --- IŞIKLANDIRMA ---
-        const light = new THREE.HemisphereLight(0xeeeeee, 0x888888, 1);
-        scene.add(light);
+    let grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    let score = 0;
+    let activePiece = null;
+    let dragElement = null;
 
-        // --- ZEMİN VE DÜNYA ---
-        const grid = new THREE.GridHelper(100, 50, 0x000000, 0x555555);
-        scene.add(grid);
-        const floorGeo = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshPhongMaterial({ color: 0x228b22 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
+    const SHAPES = [
+        { shape: [[1, 1], [1, 1]], color: 1 }, // Kare
+        { shape: [[1, 1, 1]], color: 2 },       // Yatay 3lü
+        { shape: [[1], [1], [1]], color: 3 },    // Dikey 3lü
+        { shape: [[1, 0], [1, 0], [1, 1]], color: 4 }, // L
+        { shape: [[1, 1, 1, 1]], color: 5 },    // Çubuk 4lü
+        { shape: [[0, 1], [1, 1], [0, 1]], color: 6 }, // T
+        { shape: [[1, 1], [0, 1], [0, 1]], color: 7 }  // Ters L
+    ];
 
-        // Hedefler (Düşmanlar)
-        const targets = [];
-        function createTarget(x, z) {
-            const geo = new THREE.BoxGeometry(2, 4, 2);
-            const mat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, 2, z);
-            scene.add(mesh);
-            targets.push(mesh);
+    // Izgarayı Oluştur
+    function initGrid() {
+        gridElement.innerHTML = '';
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${r}-${c}`;
+                gridElement.appendChild(cell);
+            }
         }
-        createTarget(10, -10);
-        createTarget(-15, -20);
+    }
 
-        // --- KONTROLLER ---
-        const controls = new PointerLockControls(camera, document.body);
-        const instructions = document.getElementById('instructions');
-        instructions.addEventListener('click', () => controls.lock());
-        controls.addEventListener('lock', () => instructions.style.display = 'none');
-        controls.addEventListener('unlock', () => instructions.style.display = 'flex');
+    function createPiece() {
+        const data = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        const canvas = document.createElement('canvas');
+        canvas.width = data.shape[0].length * 30;
+        canvas.height = data.shape.length * 30;
+        canvas.className = 'piece-canvas';
+        canvas.dataset.shape = JSON.stringify(data.shape);
+        canvas.dataset.color = data.color;
 
-        // Hareket Değişkenleri
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
-
-        const onKeyDown = (e) => {
-            switch (e.code) {
-                case 'KeyW': moveForward = true; break;
-                case 'KeyA': moveLeft = true; break;
-                case 'KeyS': moveBackward = true; break;
-                case 'KeyD': moveRight = true; break;
-            }
-        };
-        const onKeyUp = (e) => {
-            switch (e.code) {
-                case 'KeyW': moveForward = false; break;
-                case 'KeyA': moveLeft = false; break;
-                case 'KeyS': moveBackward = false; break;
-                case 'KeyD': moveRight = false; break;
-            }
-        };
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('keyup', onKeyUp);
-
-        // --- ATEŞ ETME MEKANİZMASI ---
-        const raycaster = new THREE.Raycaster();
-        document.addEventListener('mousedown', () => {
-            if (!controls.isLocked) return;
-            
-            // Ekranın ortasından ışın gönder
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = raycaster.intersectObjects(targets);
-
-            if (intersects.length > 0) {
-                const hit = intersects[0].object;
-                hit.material.color.set(0xffff00); // Vurunca sarı yap
-                setTimeout(() => scene.remove(hit), 100); // 100ms sonra sil
-            }
+        const ctx = canvas.getContext('2d');
+        const colors = ["", "#ff3b30", "#ff9500", "#ffcc00", "#4cd964", "#5ac8fa", "#007aff", "#5856d6"];
+        
+        data.shape.forEach((row, r) => {
+            row.forEach((val, c) => {
+                if (val) {
+                    ctx.fillStyle = colors[data.color];
+                    ctx.beginPath();
+                    ctx.roundRect(c * 30, r * 30, 28, 28, 5);
+                    ctx.fill();
+                }
+            });
         });
 
-        // --- OYUN DÖNGÜSÜ ---
-        let prevTime = performance.now();
-        function animate() {
-            requestAnimationFrame(animate);
-            if (controls.isLocked) {
-                const time = performance.now();
-                const delta = (time - prevTime) / 1000;
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('touchstart', startDrag, {passive: false});
+        return canvas;
+    }
 
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize();
-
-                if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
-
-                controls.moveRight(-velocity.x * delta);
-                controls.moveForward(-velocity.z * delta);
-
-                prevTime = time;
-            }
-            renderer.render(scene, camera);
+    function spawnPieces() {
+        piecesContainer.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+            piecesContainer.appendChild(createPiece());
         }
-        animate();
+    }
 
-        // Pencere Boyutu Ayarı
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+    function startDrag(e) {
+        e.preventDefault();
+        activePiece = this;
+        dragElement = this.cloneNode(true);
+        const rect = this.getBoundingClientRect();
+        
+        // Sürükleme efekti için klon oluştur
+        dragElement.style.position = 'fixed';
+        dragElement.style.width = (this.width * 1.5) + 'px';
+        dragElement.style.height = (this.height * 1.5) + 'px';
+        dragElement.style.pointerEvents = 'none';
+        dragElement.style.zIndex = '1000';
+        dragElement.style.opacity = '0.8';
+        document.body.appendChild(dragElement);
+
+        moveDrag(e);
+        window.addEventListener('mousemove', moveDrag);
+        window.addEventListener('touchmove', moveDrag, {passive: false});
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+    }
+
+    function moveDrag(e) {
+        const x = e.clientX || e.touches[0].clientX;
+        const y = e.clientY || e.touches[0].clientY;
+        
+        dragElement.style.left = (x - dragElement.offsetWidth / 2) + 'px';
+        dragElement.style.top = (y - dragElement.offsetHeight - 20) + 'px';
+
+        clearGhosts();
+        const pos = getGridPosition(x, y - 60);
+        if (pos) {
+            drawGhost(pos.r, pos.c, JSON.parse(activePiece.dataset.shape));
+        }
+    }
+
+    function getGridPosition(x, y) {
+        const rect = gridElement.getBoundingClientRect();
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
+        
+        const c = Math.floor((x - rect.left) / (CELL_SIZE + GAP));
+        const r = Math.floor((y - rect.top) / (CELL_SIZE + GAP));
+        return {r, c};
+    }
+
+    function clearGhosts() {
+        document.querySelectorAll('.cell.ghost').forEach(c => c.classList.remove('ghost'));
+    }
+
+    function drawGhost(r, c, shape) {
+        if (canPlace(r, c, shape)) {
+            shape.forEach((row, dr) => {
+                row.forEach((val, dc) => {
+                    if (val) {
+                        const cell = document.getElementById(`cell-${r + dr}-${c + dc}`);
+                        if (cell) cell.classList.add('ghost');
+                    }
+                });
+            });
+        }
+    }
+
+    function canPlace(r, c, shape) {
+        for (let dr = 0; dr < shape.length; dr++) {
+            for (let dc = 0; dc < shape[dr].length; dc++) {
+                if (shape[dr][dc]) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= GRID_SIZE || nc >= GRID_SIZE || nr < 0 || nc < 0 || grid[nr][nc] !== 0) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function endDrag(e) {
+        window.removeEventListener('mousemove', moveDrag);
+        window.removeEventListener('touchmove', moveDrag);
+        window.removeEventListener('mouseup', endDrag);
+        window.removeEventListener('touchend', endDrag);
+
+        const x = e.clientX || (e.changedTouches ? e.changedTouches[0].clientX : 0);
+        const y = e.clientY || (e.changedTouches ? e.changedTouches[0].clientY : 0);
+        
+        const pos = getGridPosition(x, y - 60);
+        const shape = JSON.parse(activePiece.dataset.shape);
+        const color = activePiece.dataset.color;
+
+        if (pos && canPlace(pos.r, pos.c, shape)) {
+            placePiece(pos.r, pos.c, shape, color);
+            activePiece.remove();
+            if (piecesContainer.children.length === 0) spawnPieces();
+            checkLines();
+        }
+
+        if (dragElement) dragElement.remove();
+        clearGhosts();
+        checkGameOver();
+    }
+
+    function placePiece(r, c, shape, color) {
+        shape.forEach((row, dr) => {
+            row.forEach((val, dc) => {
+                if (val) {
+                    grid[r + dr][c + dc] = color;
+                    const cell = document.getElementById(`cell-${r + dr}-${c + dc}`);
+                    cell.className = `cell filled color-${color}`;
+                }
+            });
         });
-    </script>
+        score += 10;
+        updateScore();
+    }
+
+    function checkLines() {
+        let rowsToClear = [];
+        let colsToClear = [];
+
+        // Satır kontrolü
+        for (let r = 0; r < GRID_SIZE; r++) {
+            if (grid[r].every(cell => cell !== 0)) rowsToClear.push(r);
+        }
+
+        // Sütun kontrolü
+        for (let c = 0; c < GRID_SIZE; c++) {
+            let colFull = true;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                if (grid[r][c] === 0) colFull = false;
+            }
+            if (colFull) colsToClear.push(c);
+        }
+
+        rowsToClear.forEach(r => {
+            for (let c = 0; c < GRID_SIZE; c++) grid[r][c] = 0;
+        });
+
+        colsToClear.forEach(c => {
+            for (let r = 0; r < GRID_SIZE; r++) grid[r][c] = 0;
+        });
+
+        if (rowsToClear.length > 0 || colsToClear.length > 0) {
+            score += (rowsToClear.length + colsToClear.length) * 100;
+            updateScore();
+            renderGrid();
+        }
+    }
+
+    function renderGrid() {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.getElementById(`cell-${r}-${c}`);
+                cell.className = 'cell' + (grid[r][c] ? ` filled color-${grid[r][c]}` : '');
+            }
+        }
+    }
+
+    function updateScore() {
+        scoreElement.innerText = score;
+    }
+
+    function checkGameOver() {
+        const remainingPieces = Array.from(piecesContainer.children);
+        let movesPossible = false;
+
+        for (let piece of remainingPieces) {
+            const shape = JSON.parse(piece.dataset.shape);
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    if (canPlace(r, c, shape)) {
+                        movesPossible = true;
+                        break;
+                    }
+                }
+                if (movesPossible) break;
+            }
+            if (movesPossible) break;
+        }
+
+        if (!movesPossible && remainingPieces.length > 0) {
+            alert("Oyun Bitti! Skorunuz: " + score);
+            grid = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+            score = 0;
+            updateScore();
+            renderGrid();
+            spawnPieces();
+        }
+    }
+
+    initGrid();
+    spawnPieces();
+
+</script>
 </body>
 </html>
