@@ -2,416 +2,159 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Blast Master Edition</title>
+    <title>Krunker Clone JS</title>
     <style>
-        :root {
-            --bg: #0a0e14;
-            --panel: #161b22;
-            --grid-empty: #21262d;
-            --neon-blue: #00d2ff;
-            --neon-purple: #9d50bb;
-            --white: #ffffff;
+        body { margin: 0; overflow: hidden; font-family: sans-serif; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%;
+            width: 10px; height: 10px; border: 2px solid white;
+            border-radius: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 10;
         }
-
-        * { box-sizing: border-box; user-select: none; touch-action: none; }
-
-        body {
-            background-color: var(--bg);
-            color: var(--white);
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
+        #ui {
+            position: absolute; bottom: 20px; left: 20px;
+            color: white; font-size: 24px; text-shadow: 2px 2px black;
+            pointer-events: none;
         }
-
-        /* MENÜ VE OVERLAY */
-        #overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(5, 7, 10, 0.98);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .menu-content {
-            text-align: center;
-            background: var(--panel);
-            padding: 40px;
-            border-radius: 30px;
-            border: 2px solid var(--neon-blue);
-            box-shadow: 0 0 30px rgba(0, 210, 255, 0.2);
-        }
-
-        h1 {
-            font-size: 3rem;
-            margin: 0 0 10px 0;
-            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .final-score { font-size: 1.5rem; margin-bottom: 20px; color: var(--neon-blue); display: none; }
-
-        .btn-main {
-            padding: 15px 60px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: 0.3s;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-
-        .btn-main:hover { transform: scale(1.05); filter: brightness(1.2); }
-
-        /* OYUN ALANI */
-        .game-ui {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            max-width: 450px;
-        }
-
-        .header-stats {
-            width: 90%;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: var(--panel);
-            border-radius: 15px;
-            border: 1px solid #30363d;
-        }
-
-        .stat-box { text-align: center; }
-        .stat-label { font-size: 0.7rem; opacity: 0.6; letter-spacing: 1px; }
-        .stat-val { font-size: 1.6rem; font-weight: 800; color: var(--neon-blue); }
-
-        /* TAHTA */
-        #board {
-            display: grid;
-            grid-template-columns: repeat(8, 48px);
-            grid-template-rows: repeat(8, 48px);
-            gap: 4px;
-            padding: 10px;
-            background: #30363d;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-        }
-
-        .cell {
-            width: 48px;
-            height: 48px;
-            background: var(--grid-empty);
-            border-radius: 6px;
-            transition: 0.2s;
-        }
-
-        /* BLOKLAR (YAPIŞIK GÖRÜNÜM) */
-        .block-unit {
-            width: 100%;
-            height: 100%;
-            border-radius: 6px;
-            position: relative;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
-        }
-
-        .c1 { background: #ff4757; border: 1px solid #ff6b81; }
-        .c2 { background: #2ed573; border: 1px solid #7bed9f; }
-        .c3 { background: #1e90ff; border: 1px solid #70a1ff; }
-        .c4 { background: #ffa502; border: 1px solid #eccc68; }
-        .c5 { background: #a55eea; border: 1px solid #d1d8e0; }
-
-        /* PARÇA SEÇİCİ */
-        #dock {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            width: 100%;
-            height: 150px;
-            background: var(--panel);
-            border-radius: 20px;
-            padding: 10px;
-        }
-
-        .piece {
-            display: grid;
-            gap: 2px;
-            cursor: grab;
-            transform: scale(0.65);
-            transition: 0.2s;
-        }
-
-        .piece:active { transform: scale(0.8); cursor: grabbing; }
-        .dragging { opacity: 0.4; }
-
-        @media (max-width: 420px) {
-            #board { grid-template-columns: repeat(8, 38px); grid-template-rows: repeat(8, 38px); }
-            .cell { width: 38px; height: 38px; }
+        #instructions {
+            position: absolute; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); color: white;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div id="overlay">
-        <div class="menu-content">
-            <h1 id="menu-title">BLOCK BLAST</h1>
-            <div id="last-score-display" class="final-score">SON SKOR: 0</div>
-            <button class="btn-main" onclick="initGame()">OYNA</button>
-        </div>
+    <div id="instructions">
+        <h1>OYUNA BAŞLAMAK İÇİN TIKLA</h1>
+        <p>(W,A,S,D ile hareket, Mouse ile bakış ve ateş)</p>
     </div>
+    <div id="crosshair"></div>
+    <div id="ui">HP: 100 | SKOR: 0</div>
 
-    <div class="game-ui">
-        <div class="header-stats">
-            <div class="stat-box">
-                <div class="stat-label">SKOR</div>
-                <div id="score" class="stat-val">0</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-label">EN YÜKSEK</div>
-                <div id="high-score" class="stat-val">0</div>
-            </div>
-        </div>
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
 
-        <div id="board"></div>
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-        <div id="dock"></div>
-    </div>
+        // --- SAHNE VE AYARLAR ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Gökyüzü mavisi
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-    <script>
-        const boardEl = document.getElementById('board');
-        const dockEl = document.getElementById('dock');
-        const scoreEl = document.getElementById('score');
-        const highScoreEl = document.getElementById('high-score');
-        const overlay = document.getElementById('overlay');
-        const menuTitle = document.getElementById('menu-title');
-        const lastScoreDisp = document.getElementById('last-score-display');
+        // --- IŞIKLANDIRMA ---
+        const light = new THREE.HemisphereLight(0xeeeeee, 0x888888, 1);
+        scene.add(light);
 
-        let score = 0;
-        let highScore = localStorage.getItem('bb_pro_high') || 0;
-        let grid = [];
-        let currentPiecesData = [];
+        // --- ZEMİN VE DÜNYA ---
+        const grid = new THREE.GridHelper(100, 50, 0x000000, 0x555555);
+        scene.add(grid);
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floorMat = new THREE.MeshPhongMaterial({ color: 0x228b22 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
 
-        highScoreEl.innerText = highScore;
-
-        const SHAPES = [
-            { s: [[1,1,1]], c: 'c1' },
-            { s: [[1,1],[1,1]], c: 'c2' },
-            { s: [[1,1,1,1]], c: 'c3' },
-            { s: [[1,1,1],[0,1,0]], c: 'c4' },
-            { s: [[1,0],[1,1]], c: 'c5' },
-            { s: [[1,1,1],[1,0,0]], c: 'c1' },
-            { s: [[1]], c: 'c2' },
-            { s: [[1,1]], c: 'c3' }
-        ];
-
-        function initGame() {
-            score = 0;
-            scoreEl.innerText = '0';
-            overlay.style.display = 'none';
-            grid = Array(8).fill().map(() => Array(8).fill(0));
-            
-            drawBoard();
-            spawnPieces();
+        // Hedefler (Düşmanlar)
+        const targets = [];
+        function createTarget(x, z) {
+            const geo = new THREE.BoxGeometry(2, 4, 2);
+            const mat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, 2, z);
+            scene.add(mesh);
+            targets.push(mesh);
         }
+        createTarget(10, -10);
+        createTarget(-15, -20);
 
-        function drawBoard() {
-            boardEl.innerHTML = '';
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.id = `cell-${r}-${c}`;
-                    boardEl.appendChild(cell);
-                }
+        // --- KONTROLLER ---
+        const controls = new PointerLockControls(camera, document.body);
+        const instructions = document.getElementById('instructions');
+        instructions.addEventListener('click', () => controls.lock());
+        controls.addEventListener('lock', () => instructions.style.display = 'none');
+        controls.addEventListener('unlock', () => instructions.style.display = 'flex');
+
+        // Hareket Değişkenleri
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+
+        const onKeyDown = (e) => {
+            switch (e.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyD': moveRight = true; break;
             }
-        }
-
-        function spawnPieces() {
-            dockEl.innerHTML = '';
-            currentPiecesData = [];
-            for (let i = 0; i < 3; i++) {
-                const data = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-                currentPiecesData.push({ ...data, id: i });
-                renderPiece(data, i);
+        };
+        const onKeyUp = (e) => {
+            switch (e.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyD': moveRight = false; break;
             }
-            checkGameOver();
-        }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
 
-        function renderPiece(data, id) {
-            const pieceWrap = document.createElement('div');
-            pieceWrap.className = 'piece';
-            pieceWrap.id = `piece-${id}`;
-            pieceWrap.draggable = true;
-            pieceWrap.style.gridTemplateColumns = `repeat(${data.s[0].length}, 40px)`;
-
-            data.s.forEach(row => {
-                row.forEach(val => {
-                    const b = document.createElement('div');
-                    if(val) {
-                        b.className = `block-unit ${data.c}`;
-                        b.style.width = '40px';
-                        b.style.height = '40px';
-                    } else {
-                        b.style.opacity = '0';
-                    }
-                    pieceWrap.appendChild(b);
-                });
-            });
-
-            pieceWrap.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('pieceId', id);
-                pieceWrap.classList.add('dragging');
-            });
-
-            pieceWrap.addEventListener('dragend', () => pieceWrap.classList.remove('dragging'));
-            dockEl.appendChild(pieceWrap);
-        }
-
-        boardEl.addEventListener('dragover', e => e.preventDefault());
-
-        boardEl.addEventListener('drop', e => {
-            e.preventDefault();
-            const id = e.dataTransfer.getData('pieceId');
-            const data = currentPiecesData.find(p => p.id == id);
-            if(!data) return;
-
-            const rect = boardEl.getBoundingClientRect();
-            const cellSize = rect.width / 8;
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+        // --- ATEŞ ETME MEKANİZMASI ---
+        const raycaster = new THREE.Raycaster();
+        document.addEventListener('mousedown', () => {
+            if (!controls.isLocked) return;
             
-            const col = Math.floor(x / cellSize);
-            const row = Math.floor(y / cellSize);
+            // Ekranın ortasından ışın gönder
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(targets);
 
-            if (canPlace(data.s, row, col)) {
-                placePiece(data.s, row, col, data.c);
-                document.getElementById(`piece-${id}`).remove();
-                currentPiecesData = currentPiecesData.filter(p => p.id != id);
-                
-                if (dockEl.children.length === 0) spawnPieces();
-                else checkGameOver();
-                
-                checkLines();
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                hit.material.color.set(0xffff00); // Vurunca sarı yap
+                setTimeout(() => scene.remove(hit), 100); // 100ms sonra sil
             }
         });
 
-        function canPlace(shape, r, c) {
-            for (let i = 0; i < shape.length; i++) {
-                for (let j = 0; j < shape[i].length; j++) {
-                    if (shape[i][j]) {
-                        const nr = r + i;
-                        const nc = c + j;
-                        if (nr < 0 || nr >= 8 || nc < 0 || nc >= 8 || grid[nr][nc] !== 0) return false;
-                    }
-                }
+        // --- OYUN DÖNGÜSÜ ---
+        let prevTime = performance.now();
+        function animate() {
+            requestAnimationFrame(animate);
+            if (controls.isLocked) {
+                const time = performance.now();
+                const delta = (time - prevTime) / 1000;
+
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize();
+
+                if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
+
+                prevTime = time;
             }
-            return true;
+            renderer.render(scene, camera);
         }
+        animate();
 
-        function placePiece(shape, r, c, colorClass) {
-            for (let i = 0; i < shape.length; i++) {
-                for (let j = 0; j < shape[i].length; j++) {
-                    if (shape[i][j]) {
-                        grid[r + i][c + j] = colorClass;
-                        const cell = document.getElementById(`cell-${r+i}-${c+j}`);
-                        cell.innerHTML = `<div class="block-unit ${colorClass}"></div>`;
-                    }
-                }
-            }
-            score += 10;
-            scoreEl.innerText = score;
-        }
-
-        function checkLines() {
-            let rowsToClear = [];
-            let colsToClear = [];
-
-            // Satırlar
-            for (let r = 0; r < 8; r++) {
-                if (grid[r].every(cell => cell !== 0)) rowsToClear.push(r);
-            }
-
-            // Sütunlar
-            for (let c = 0; c < 8; c++) {
-                let full = true;
-                for (let r = 0; r < 8; r++) {
-                    if (grid[r][c] === 0) { full = false; break; }
-                }
-                if (full) colsToClear.push(c);
-            }
-
-            rowsToClear.forEach(r => {
-                for (let c = 0; c < 8; c++) clearCell(r, c);
-            });
-
-            colsToClear.forEach(c => {
-                for (let r = 0; r < 8; r++) clearCell(r, c);
-            });
-
-            if (rowsToClear.length > 0 || colsToClear.length > 0) {
-                score += (rowsToClear.length + colsToClear.length) * 100;
-                scoreEl.innerText = score;
-                if (score > highScore) {
-                    highScore = score;
-                    highScoreEl.innerText = highScore;
-                    localStorage.setItem('bb_pro_high', highScore);
-                }
-            }
-        }
-
-        function clearCell(r, c) {
-            grid[r][c] = 0;
-            const cell = document.getElementById(`cell-${r}-${c}`);
-            cell.style.transform = 'scale(0)';
-            setTimeout(() => {
-                cell.innerHTML = '';
-                cell.style.transform = 'scale(1)';
-            }, 200);
-        }
-
-        function checkGameOver() {
-            // Elimizdeki mevcut parçalardan herhangi biri tahtada boş bir yere sığıyor mu?
-            let possible = false;
-            
-            for (let p of currentPiecesData) {
-                for (let r = 0; r < 8; r++) {
-                    for (let c = 0; c < 8; c++) {
-                        if (canPlace(p.s, r, c)) {
-                            possible = true;
-                            break;
-                        }
-                    }
-                    if (possible) break;
-                }
-                if (possible) break;
-            }
-
-            if (!possible && currentPiecesData.length > 0) {
-                setTimeout(gameOver, 500);
-            }
-        }
-
-        function gameOver() {
-            overlay.style.display = 'flex';
-            menuTitle.innerText = "OYUN BİTTİ!";
-            lastScoreDisp.innerText = "SKORUN: " + score;
-            lastScoreDisp.style.display = 'block';
-        }
-
+        // Pencere Boyutu Ayarı
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
